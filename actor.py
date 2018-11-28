@@ -18,12 +18,12 @@ class Actor:
 
 class GeneticActor(Actor):
     def get_genome(self):
-        """Returns the genomic representation of self."""
-        raise NotImplemented()
+        """Returns the genomic representation of self. A genome is a numpy array of floats."""
+        return np.array([])
 
     def from_genome(self, genome):
         """Generates a new GeneticActor for the same environment as this actor, based on the given genome."""
-        return GeneticActor()
+        return GeneticActor(self._observation_space, self._action_space)
 
 
 
@@ -32,7 +32,7 @@ class PerceptronActor(Actor):
         super(PerceptronActor, self).__init__(observation_space, action_space)
         self._n_obs = product(observation_space.shape)
         self._n_act = action_space.n
-        self._perceptron_matrix = np.ones((self._n_act, self._n_obs)) / (self._n_act * self._n_obs)
+        self._perceptron_matrix = np.random.random((self._n_act, self._n_obs))
 
     def react_to(self, observation):
         outputs = self._perceptron_matrix.dot(np.reshape(observation, self._n_obs))
@@ -45,8 +45,9 @@ class PerceptronActor(Actor):
 
 class GeneticPerceptronActor(PerceptronActor, GeneticActor):
     def get_genome(self):
-        return np.reshape(self._perceptron_matrix, self._n_obs * self._n_act)
+        return np.reshape(self._perceptron_matrix, self._n_obs * self._n_act).copy()
 
     def from_genome(self, genome):
         pa = GeneticPerceptronActor(self._observation_space, self._action_space)
         pa._perceptron_matrix = np.reshape(genome, self._perceptron_matrix.shape)
+        return pa
