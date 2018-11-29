@@ -17,4 +17,8 @@ If render is True, will render simulation on screen at ~fps frames per second.""
         steps        += 1
         total_reward += reward
 
+    if render:
+        time.sleep(1)
+        environment.close()
+
     return total_reward

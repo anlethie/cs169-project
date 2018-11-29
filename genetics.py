@@ -3,20 +3,21 @@ import random as rnd
 
 from execution import simulate
 
-# Having some trouble getting parallel computations to work. For now, disabled.
-ALLOW_PARALLEL = False
+# Had some trouble getting parallel computations to work.
+# If there are issues, disable this flag
+ALLOW_PARALLEL = True
 
 try:
     assert ALLOW_PARALLEL,'Parallel computation manually disabled.'
     import gym
-    from actor import Actor
+    from actor import GeneticPerceptronActor
     from joblib import Parallel, delayed
     # Actually execute a simple test of the parallel system, to make sure it works
     N_JOBS = 8
     # PARALLEL_TEST = Parallel(n_jobs=N_JOBS)(delayed(lambda x: x**0.5)(i) for i in range(100))
     env = gym.make('CartPole-v1')
     PARALLEL_TEST = Parallel(n_jobs=N_JOBS)(delayed(lambda a: simulate(a, env))(a)
-        for a in [Actor(env.observation_space, env.action_space) for _ in range(100)])
+        for a in [GeneticPerceptronActor(env.observation_space, env.action_space) for _ in range(100)])
     USE_PARALLEL  = True
     print('Parallel computation enabled.')
 except Exception as e:
@@ -74,8 +75,6 @@ max_steps - the maximum number of simulation steps for each run
     #   Use mutate and cross-over on the resulting next generation
     #   Build GeneticActors from those new genomes
 
-    N = len(population)
-
     def run_actor(actor):
         """Returns the actor's average score and genome."""
         score = np.mean([
@@ -83,7 +82,6 @@ max_steps - the maximum number of simulation steps for each run
             for _ in range(simulation_reps)
         ])
         return (score,actor.get_genome())
-
 
     population = list(population) # demand that this is a list, not an iterable or something weird.
     if USE_PARALLEL:
@@ -93,13 +91,10 @@ max_steps - the maximum number of simulation steps for each run
         # Otherwise, not a big deal, just do things sequentially
         scored_genomes = [run_actor(actor) for actor in population]
 
-    # Taken directly from textbook
     flo = min(s for s,_ in scored_genomes)
     fhi = max(s for s,_ in scored_genomes)
-    C = 0.1 * flo + 1.1 * fhi
-    D = max(1, fhi + C)
-    # Perform the scaling:
-    scored_genomes = [( ((score + C) / D) , genome ) for score,genome in scored_genomes]
+    # Perform the scaling: this shifts all numbers to be strictly positive
+    scored_genomes = [( (score - flo) + 0.1 * abs(flo) , genome ) for score,genome in scored_genomes]
     total_score = sum(s for s,_ in scored_genomes)
     # Re-write the scores as cumulative scores:
     cscored_genomes = [scored_genomes[0]]
@@ -111,6 +106,7 @@ max_steps - the maximum number of simulation steps for each run
         # Find the first cumulative score that exceeds the random number
         return next(genome for cscore,genome in cscored_genomes if cscore >= r)
 
+    N = len(population)
     # perform roulette-wheel sampling:
     mating_pool = [roulette_sample() for _ in range(N)]
 
@@ -146,9 +142,9 @@ max_steps - the maximum number of simulation steps for each run
 """
     population = initial_population
     for i in range(generations):
-        if (i % render_gens) == 0:
+        if render_gens != None and (i % render_gens) == 0:
             print('---=== Generation', i, '===---')
-            simulate(population[0], environment, render=True)
+            simulate(population[0], environment, render=True, max_steps=max_steps)
 
         population = run_generation(
                 population, environment,
