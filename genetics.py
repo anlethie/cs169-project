@@ -36,13 +36,15 @@ except Exception as e:
 # Standardizing what a genome is for our purposes lets us manipulate them in the abstract, 
 #   so these functions can be applied to any problem environment.
 
-def mutate(genome, p=1.0):
+def mutate(genome, p=1.0, scale=0.25):
     """Takes a genome and randomly mutates it.
-The probability of mutating each element is p."""
+The probability of mutating each element is p.
+The mutation is drawn from a normal distribution with std. dev. = scale."""
     new_genome = genome.copy()
     for i in range(genome.size):
         if np.random.rand() < p:
-            new_genome[i] = np.random.rand()
+            # new_genome[i] = np.random.rand()
+            new_genome[i] = min(1., max(0., np.random.normal(new_genome[i], scale)))
     return new_genome
 
 def crossover(genome1, genome2):
@@ -59,8 +61,11 @@ def crossover(genome1, genome2):
 def run_generation(
         population, environment,
         p_mutation=0.01,
+        mutation_scale=0.25,
         simulation_reps=100,
-        max_steps=1000
+        max_steps=1000,
+        allow_parallel=True,
+        max_jobs=None
         ):
     """Executes one full generation, starting with the given population.
 Returns the new population.
@@ -84,9 +89,11 @@ max_steps - the maximum number of simulation steps for each run
         return (score,actor.get_genome())
 
     population = list(population) # demand that this is a list, not an iterable or something weird.
-    if USE_PARALLEL:
+    print('allow_parallel:', allow_parallel)
+    if USE_PARALLEL and allow_parallel:
         # When available, use parallel evaluation to speed up the evaluation of the population
-        scored_genomes = Parallel(n_jobs=N_JOBS)(delayed(run_actor)(actor) for actor in population)
+        scored_genomes = Parallel(n_jobs=N_JOBS if max_jobs == None else min(N_JOBS, max_jobs))(
+            delayed(run_actor)(actor) for actor in population)
     else:
         # Otherwise, not a big deal, just do things sequentially
         scored_genomes = [run_actor(actor) for actor in population]
@@ -116,7 +123,7 @@ max_steps - the maximum number of simulation steps for each run
 
     # Perform cross-over N//2 times, since each produces 2 offspring
     # Simultaneously execute mutations on each child
-    offspring_genomes = [mutate(x, p_mutation) for _ in range(N // 2) for x in gen_children()]
+    offspring_genomes = [mutate(x, p=p_mutation, scale=mutation_scale) for _ in range(N // 2) for x in gen_children()]
 
     # need some actor from the original pool, just to generate the new actors
     actor = population[0]
@@ -129,9 +136,12 @@ def evolve(
         environment,
         generations=100,
         p_mutation=0.01,
+        mutation_scale=0.25,
         simulation_reps=100,
         max_steps=1000,
-        render_gens=10
+        render_gens=10,
+        allow_parallel=True,
+        max_jobs=None
         ):
     """Runs selection and simulation on initial_population for specified number of generations.
 Returns the final generation.
@@ -149,8 +159,11 @@ max_steps - the maximum number of simulation steps for each run
         population = run_generation(
                 population, environment,
                 p_mutation=p_mutation,
+                mutation_scale=mutation_scale,
                 simulation_reps=simulation_reps,
-                max_steps=max_steps
+                max_steps=max_steps,
+                allow_parallel=allow_parallel,
+                max_jobs=max_jobs
             )
 
     return population

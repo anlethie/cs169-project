@@ -45,9 +45,9 @@ class PerceptronActor(Actor):
 
 class GeneticPerceptronActor(PerceptronActor, GeneticActor):
     def get_genome(self):
-        return np.reshape(self._perceptron_matrix, self._n_obs * self._n_act).copy()
+        return (np.reshape(self._perceptron_matrix.copy(), self._n_obs * self._n_act) + 1) / 2
 
     def from_genome(self, genome):
         pa = GeneticPerceptronActor(self._observation_space, self._action_space)
-        pa._perceptron_matrix = np.reshape(genome, self._perceptron_matrix.shape)
+        pa._perceptron_matrix = (2 * np.reshape(genome.copy(), self._perceptron_matrix.shape)) - 1
         return pa
