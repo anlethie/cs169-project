@@ -89,7 +89,6 @@ max_steps - the maximum number of simulation steps for each run
         return (score,actor.get_genome())
 
     population = list(population) # demand that this is a list, not an iterable or something weird.
-    print('allow_parallel:', allow_parallel)
     if USE_PARALLEL and allow_parallel:
         # When available, use parallel evaluation to speed up the evaluation of the population
         scored_genomes = Parallel(n_jobs=N_JOBS if max_jobs == None else min(N_JOBS, max_jobs))(

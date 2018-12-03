@@ -1,11 +1,10 @@
 import gym
-from actor import GeneticPerceptronActor
+from actor import GeneticNNActor
 from execution import simulate
 from genetics import evolve
 
-print('Building environment...', flush=True)
+HIDDEN_LAYERS = [10, 4]
+
 env = gym.make('MsPacman-ram-v0')
-print('Generating population...', flush=True)
-population = [GeneticPerceptronActor(env.observation_space, env.action_space) for _ in range(100)]
-print('Evolving...', flush=True)
-evolve(population, env, generations=101, simulation_reps=5, max_steps=20000, render_gens=10, allow_parallel=False)
+population = [GeneticNNActor(env.observation_space, env.action_space, hidden_layers=HIDDEN_LAYERS) for _ in range(100)]
+evolve(population, env, generations=101, simulation_reps=5, max_steps=20000, render_gens=5, allow_parallel=True)

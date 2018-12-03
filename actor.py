@@ -52,16 +52,17 @@ class NeuralNetActor(Actor):
         self._layers = []
         for in_size,out_size in zip([self._n_obs] + hidden_layers, hidden_layers + [self._n_act]):
             self._layers.append(np.random.random((out_size, in_size)))
-        self._threshold_fn = lambda X: 1. / (1. + np.exp(-X))
+        # self._threshold_fn = lambda X: 1. / (1. + np.exp(-X))
 
     def react_to(self, observation):
         current_vector = np.reshape(observation, self._n_obs)
         for layer in self._layers:
             current_vector = layer.dot(current_vector)
-            current_vector = self._threshold_fn(current_vector)
+            # current_vector = self._threshold_fn(current_vector)
+            current_vector = 1. / (1. + np.exp(-current_vector))
         i = 0
         for j,x in enumerate(current_vector):
-            if x > outputs[i]:
+            if x > current_vector[i]:
                 i = j
         return i
 
@@ -78,9 +79,9 @@ class GeneticPerceptronActor(PerceptronActor, GeneticActor):
 
 class GeneticNNActor(NeuralNetActor, GeneticActor):
     def get_genome(self):
-        genome = []
+        genome = np.array([])
         for layer in self._layers:
-            genome.append(np.reshape(layer.copy(), product(layer.shape)))
+            genome = np.concatenate((genome, np.reshape(layer.copy(), product(layer.shape))))
         genome = (genome + 1.)/2.
         return genome
 
