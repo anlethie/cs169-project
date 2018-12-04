@@ -31,11 +31,17 @@ class PerceptronActor(Actor):
     def __init__(self, observation_space, action_space):
         super(PerceptronActor, self).__init__(observation_space, action_space)
         self._n_obs = product(observation_space.shape)
+        self._obs_range = (np.array(self._observation_space.high, dtype=float) -
+                           np.array(self._observation_space.low, dtype=float))
         self._n_act = action_space.n
-        self._perceptron_matrix = np.random.random((self._n_act, self._n_obs))
+        self._perceptron_matrix = (np.random.random((self._n_act, self._n_obs))*2)-1
 
     def react_to(self, observation):
-        outputs = self._perceptron_matrix.dot(np.reshape(observation, self._n_obs))
+        obs = observation.copy()
+        obs -= self._observation_space.low
+        obs /= self._obs_range
+        obs = np.reshape(obs, self._n_obs).copy()
+        outputs = self._perceptron_matrix.dot(obs)
         i = 0
         for j,x in enumerate(outputs):
             if x > outputs[i]:
@@ -48,20 +54,26 @@ class NeuralNetActor(Actor):
         """hidden_layers is a list of numbers, each number the number of nodes on a hidden layer, in order"""
         super(NeuralNetActor, self).__init__(observation_space, action_space)
         self._n_obs = product(observation_space.shape)
+        self._obs_range = (np.array(self._observation_space.high, dtype=float) -
+                           np.array(self._observation_space.low, dtype=float))
         self._n_act = action_space.n
         self._layers = []
         for in_size,out_size in zip([self._n_obs] + hidden_layers, hidden_layers + [self._n_act]):
-            self._layers.append(np.random.random((out_size, in_size)))
-        self._threshold_fn = lambda X: 1. / (1. + np.exp(-X))
+            self._layers.append((np.random.random((out_size, in_size))*2)-1)
+        # self._threshold_fn = lambda X: 1. / (1. + np.exp(-X))
 
     def react_to(self, observation):
-        current_vector = np.reshape(observation, self._n_obs)
+        obs = observation.copy()
+        obs -= self._observation_space.low
+        obs /= self._obs_range
+        current_vector = np.reshape(obs, self._n_obs)
         for layer in self._layers:
             current_vector = layer.dot(current_vector)
-            current_vector = self._threshold_fn(current_vector)
+            # current_vector = self._threshold_fn(current_vector)
+            current_vector = 1. / (1. + np.exp(-current_vector))
         i = 0
         for j,x in enumerate(current_vector):
-            if x > outputs[i]:
+            if x > current_vector[i]:
                 i = j
         return i
 
@@ -78,9 +90,9 @@ class GeneticPerceptronActor(PerceptronActor, GeneticActor):
 
 class GeneticNNActor(NeuralNetActor, GeneticActor):
     def get_genome(self):
-        genome = []
+        genome = np.array([])
         for layer in self._layers:
-            genome.append(np.reshape(layer.copy(), product(layer.shape)))
+            genome = np.concatenate((genome, np.reshape(layer.copy(), product(layer.shape))))
         genome = (genome + 1.)/2.
         return genome
 
