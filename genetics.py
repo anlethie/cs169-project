@@ -72,13 +72,7 @@ Returns the new population.
 p_mutation - the chance that a particular value in an offspring genome is changed
 simulation_reps - the number of times to execute each actor in the environment, to account for random variation in initial environmental conditions
 max_steps - the maximum number of simulation steps for each run
-"""
-    # TODO: write this function. Sketch:
-    # x simulate each actor in population against environment some number of times, average scores
-    #   Use those averaged scores to generate next population's genomes, copied from previous population according to roulette wheel or exponential distribution selection
-    #     Alternatively, take the selection strategy as a functional parameter, to be tuned later
-    #   Use mutate and cross-over on the resulting next generation
-    #   Build GeneticActors from those new genomes
+"""    
 
     def run_actor(actor):
         """Returns the actor's average score and genome."""
@@ -89,7 +83,6 @@ max_steps - the maximum number of simulation steps for each run
         return (score,actor.get_genome())
 
     population = list(population) # demand that this is a list, not an iterable or something weird.
-    print('allow_parallel:', allow_parallel)
     if USE_PARALLEL and allow_parallel:
         # When available, use parallel evaluation to speed up the evaluation of the population
         scored_genomes = Parallel(n_jobs=N_JOBS if max_jobs == None else min(N_JOBS, max_jobs))(
@@ -101,7 +94,9 @@ max_steps - the maximum number of simulation steps for each run
     flo = min(s for s,_ in scored_genomes)
     fhi = max(s for s,_ in scored_genomes)
     # Perform the scaling: this shifts all numbers to be strictly positive
-    scored_genomes = [( (score - flo) + 0.1 * abs(flo) , genome ) for score,genome in scored_genomes]
+    C = .1*fhi- 1.1 * flo
+    D=max(1, fhi+C)
+    scored_genomes = [((score + C)/D , genome ) for score,genome in scored_genomes]
     total_score = sum(s for s,_ in scored_genomes)
     # Re-write the scores as cumulative scores:
     cscored_genomes = [scored_genomes[0]]
@@ -130,6 +125,29 @@ max_steps - the maximum number of simulation steps for each run
 
     return [actor.from_genome(genome) for genome in offspring_genomes]
 
+def population_best_worst(population, environment, simulation_reps,i, render=True, fps=30):
+    scores=[]
+    actor_scores={}
+    for actor in range(len(population)):
+        individual_score=0
+        for rep in range(simulation_reps):
+            individual_score+=simulate(population[actor], environment, max_steps=1000, render=False, fps=fps)
+        actor_scores[individual_score/simulation_reps]=population[actor]
+        scores.append(individual_score/simulation_reps)
+    scores.sort(reverse=True)
+    if render==True:
+        print('Best Actor in Generation ',i)
+        print(simulate(actor_scores[scores[0]], environment, max_steps=1000, render=render, fps=fps))
+        print('Worst Actor in Generation ',i)
+        print(simulate(actor_scores[scores[-1]], environment, max_steps=1000, render=render, fps=fps))
+    elif render==False:
+        print('Best Actor in Generation ',i)
+        print(scores[0])
+        print('Worst Actor in Generation ',i)
+        print(scores[-1])
+    
+def population_change():
+    return None
 
 def evolve(
         initial_population,
@@ -141,7 +159,7 @@ def evolve(
         max_steps=1000,
         render_gens=10,
         allow_parallel=True,
-        max_jobs=None
+        max_jobs=None, fps=30
         ):
     """Runs selection and simulation on initial_population for specified number of generations.
 Returns the final generation.
@@ -152,10 +170,15 @@ max_steps - the maximum number of simulation steps for each run
 """
     population = initial_population
     for i in range(generations):
-        if render_gens != None and (i % render_gens) == 0:
-            print('---=== Generation', i, '===---')
-            simulate(population[0], environment, render=True, max_steps=max_steps)
-
+        print('---=== Generation', i, '===---')
+        if type(render_gens)==int and (i % render_gens) == 0:
+            print(simulate(population[0], environment, render=True, max_steps=max_steps, fps=fps))
+        if render_gens=='BW_render':
+            population_best_worst(population, environment, simulation_reps, i, fps=fps)
+        if render_gens=='BW':
+            population_best_worst(population, environment, simulation_reps, i, render=False)
+        if render_gens=='change':
+            population_change(population, environment, i)
         population = run_generation(
                 population, environment,
                 p_mutation=p_mutation,
