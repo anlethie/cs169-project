@@ -1,10 +1,24 @@
 import gym
 from actor import GeneticNNActor
-from execution import simulate
-from genetics import evolve
+from genetics import evolve, render_from_file
 
 HIDDEN_LAYERS = [10, 4]
+SAVEFILE      = 'MsPacman_NN_10_4.txt'
 
-env = gym.make('MsPacman-ram-v0')
-population = [GeneticNNActor(env.observation_space, env.action_space, hidden_layers=HIDDEN_LAYERS) for _ in range(100)]
-evolve(population, env, generations=101, simulation_reps=5, max_steps=20000, render_gens=5, allow_parallel=True)
+try:
+    env = gym.make('MsPacman-ram-v0')
+    population = [GeneticNNActor(env.observation_space, env.action_space, hidden_layers=HIDDEN_LAYERS) for _ in range(100)]
+    model = population[0]
+    evolve(population, env,
+        generations=1000, simulation_reps=5,
+        max_steps=100000, render_gens=None,
+        savefile=SAVEFILE,
+        savenum=3,
+        allow_parallel=True
+        )
+except KeyboardInterrupt:
+    print('Interrupted...')
+    pass
+finally:
+    print('Top 3 Actors found:')
+    render_from_file(SAVEFILE, model, env, num=3)

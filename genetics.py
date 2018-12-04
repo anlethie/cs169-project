@@ -64,6 +64,8 @@ def run_generation(
         mutation_scale=0.25,
         simulation_reps=100,
         max_steps=1000,
+        savefile=None,
+        savenum=1,
         allow_parallel=True,
         max_jobs=None
         ):
@@ -97,8 +99,23 @@ max_steps - the maximum number of simulation steps for each run
         # Otherwise, not a big deal, just do things sequentially
         scored_genomes = [run_actor(actor) for actor in population]
 
-    flo = min(s for s,_ in scored_genomes)
-    fhi = max(s for s,_ in scored_genomes)
+    # flo,worst_genome = min(scored_genomes)
+    # fhi,best_genome  = max(scored_genomes)
+    flo,worst_genome = scored_genomes[0]
+    fhi,best_genome = scored_genomes[0]
+    for s,g in scored_genomes[1:]:
+        if s < flo:
+            flo = s
+            worst_genome = g
+        if s > fhi:
+            fhi = s
+            best_genome = g
+    if savefile != None:
+        with open(savefile, 'a') as f:
+            for j,(s,g) in enumerate(sorted(scored_genomes, key=lambda x:-x[0])):
+                if j >= savenum:
+                    break
+                print(s,list(g),sep=',',file=f)
     # Perform the scaling: this shifts all numbers to be strictly positive
     scored_genomes = [( (score - flo) + 0.1 * abs(flo) , genome ) for score,genome in scored_genomes]
     total_score = sum(s for s,_ in scored_genomes)
@@ -127,7 +144,7 @@ max_steps - the maximum number of simulation steps for each run
     # need some actor from the original pool, just to generate the new actors
     actor = population[0]
 
-    return [actor.from_genome(genome) for genome in offspring_genomes]
+    return [actor.from_genome(genome) for genome in offspring_genomes],actor.from_genome(best_genome),actor.from_genome(worst_genome)
 
 
 def evolve(
@@ -139,6 +156,8 @@ def evolve(
         simulation_reps=100,
         max_steps=1000,
         render_gens=10,
+        savefile=None,
+        savenum=1,
         allow_parallel=True,
         max_jobs=None
         ):
@@ -151,18 +170,52 @@ max_steps - the maximum number of simulation steps for each run
 """
     population = initial_population
     for i in range(generations):
-        if render_gens != None and (i % render_gens) == 0:
-            print('---=== Generation', i, '===---')
-            simulate(population[0], environment, render=True, max_steps=max_steps)
-
-        population = run_generation(
+        population,best_actor,worst_actor = run_generation(
                 population, environment,
                 p_mutation=p_mutation,
                 mutation_scale=mutation_scale,
                 simulation_reps=simulation_reps,
                 max_steps=max_steps,
+                savefile=savefile,
+                savenum=savenum,
                 allow_parallel=allow_parallel,
                 max_jobs=max_jobs
             )
 
+        if render_gens != None and (i % render_gens) == 0:
+            print('---=== Generation', i, '===---')
+            simulate(best_actor, environment, render=True, max_steps=max_steps)
+
+
     return population
+
+
+def load_genomes(savefile, criterion='best', num=1):
+    """Loads genomes (and their scores) from a savefile. Returns a list of genomes.
+criterion can be 'best', 'worst', or 'first'
+"""
+    saved = []
+    with open(savefile, 'r') as f:
+        for line in f:
+            score,genome = line.split(',', 1)
+            score  = float(score)
+            genome = np.array(eval(genome))
+            if len(saved) < num:
+                saved.append((score,genome))
+            elif criterion == 'first':
+                break
+            elif criterion == 'best' and saved[0][0] < score:
+                saved[0] = (score,genome)
+            elif criterion == 'worst' and saved[-1][0] > score:
+                saved[-1] = (score,genome)
+            else:
+                continue
+            saved.sort(key=lambda x: x[0])
+    return saved
+
+def render_from_file(savefile, model_actor, env, criterion='best', num=1, max_steps=1000):
+    scored_genomes = load_genomes(savefile, criterion, num)
+    for s,g in scored_genomes:
+        actor = model_actor.from_genome(g)
+        print('Score:', s)
+        simulate(actor, env, render=True, max_steps=max_steps)
