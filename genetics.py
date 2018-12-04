@@ -213,6 +213,10 @@ criterion can be 'best', 'worst', or 'first'
             saved.sort(key=lambda x: x[0])
     return saved
 
+def load_actors(savefile, model_actor, criterion='best', num=1):
+    scored_genomes = load_genomes(savefile, criterion, num)
+    return [model_actor.from_genome(g) for s,g in scored_genomes]
+
 def render_from_file(savefile, model_actor, env, criterion='best', num=1, max_steps=1000):
     scored_genomes = load_genomes(savefile, criterion, num)
     for s,g in scored_genomes:
