@@ -1,14 +1,69 @@
 from functools import reduce
 import numpy as np
 
+
 def product(l):
-    return reduce(lambda x,y: x*y, l)
+    return reduce(lambda x,y: x*y, l, 1)
+
+def space_size(space):
+    try:
+        return space.n
+    except AttributeError:
+        pass
+    try:
+        return product(space_size(s) for s in space.spaces)
+    except AttributeError:
+        pass
+    try:
+        return product(space.shape)
+    except AttributeError:
+        print('Could not interpret size of space', space)
+        return None
+
+def normalize_observation(obs, obs_space):
+    def asfloat(x):
+        return np.array(x, dtype=float)
+    try:
+        return (
+            (asfloat(obs) - asfloat(obs_space.low)) /
+            (asfloat(obs_space.high) - asfloat(obs_space.low))
+            )
+    except AttributeError:
+        pass
+    try:
+        output = np.zeros(obs_space.n)
+        output[obs] = 1. # one-hot interpretation of a discrete space
+        return output
+    except AttributeError:
+        pass
+    try:
+        output = np.array([])
+        for o,s in zip(obs,obs_space.spaces):
+            output = np.concatenate((output, normalize_observation(o, s)))
+        return np.reshape(output, product(output.shape)).copy()
+    except AttributeError:
+        print('Could not recognize observation', obs, 'and space', obs_space)
+        return None
+
+def interpret_action(num, action_space):
+    """Interprets discrete action num as an action in action_space"""
+    try:
+        output = []
+        for s in action_space.spaces:
+            output.append(num % s.n)
+            num = num // s.n
+        return output
+    except AttributeError:
+        pass
+    return num
 
 class Actor:
     """Encapsulates how to respond to observations in some environment."""
     def __init__(self, observation_space, action_space):
         self._observation_space = observation_space
         self._action_space      = action_space
+        self._n_obs = space_size(observation_space)
+        self._n_act = space_size(action_space)
 
     def react_to(self, observation):
         """Returns an action in response to the observation."""
@@ -30,42 +85,29 @@ class GeneticActor(Actor):
 class PerceptronActor(Actor):
     def __init__(self, observation_space, action_space):
         super(PerceptronActor, self).__init__(observation_space, action_space)
-        self._n_obs = product(observation_space.shape)
-        self._obs_range = (np.array(self._observation_space.high, dtype=float) -
-                           np.array(self._observation_space.low, dtype=float))
-        self._n_act = action_space.n
         self._perceptron_matrix = (np.random.random((self._n_act, self._n_obs))*2)-1
 
     def react_to(self, observation):
-        obs = observation.copy()
-        obs -= self._observation_space.low
-        obs /= self._obs_range
-        obs = np.reshape(obs, self._n_obs).copy()
+        obs = normalize_observation(observation, self._observation_space)
         outputs = self._perceptron_matrix.dot(obs)
         i = 0
         for j,x in enumerate(outputs):
             if x > outputs[i]:
                 i = j
-        return i
+        return interpret_action(i, self._action_space)
 
 class NeuralNetActor(Actor):
     """Actor that uses a neural network to react to observations."""
     def __init__(self, observation_space, action_space, hidden_layers=[]):
         """hidden_layers is a list of numbers, each number the number of nodes on a hidden layer, in order"""
         super(NeuralNetActor, self).__init__(observation_space, action_space)
-        self._n_obs = product(observation_space.shape)
-        self._obs_range = (np.array(self._observation_space.high, dtype=float) -
-                           np.array(self._observation_space.low, dtype=float))
-        self._n_act = action_space.n
         self._layers = []
         for in_size,out_size in zip([self._n_obs] + hidden_layers, hidden_layers + [self._n_act]):
             self._layers.append((np.random.random((out_size, in_size))*2)-1)
         # self._threshold_fn = lambda X: 1. / (1. + np.exp(-X))
 
     def react_to(self, observation):
-        obs = observation.copy()
-        obs -= self._observation_space.low
-        obs /= self._obs_range
+        obs = normalize_observation(observation, self._observation_space)
         current_vector = np.reshape(obs, self._n_obs)
         for layer in self._layers:
             current_vector = layer.dot(current_vector)
@@ -75,7 +117,7 @@ class NeuralNetActor(Actor):
         for j,x in enumerate(current_vector):
             if x > current_vector[i]:
                 i = j
-        return i
+        return interpret_action(i, self._action_space)
 
 
 

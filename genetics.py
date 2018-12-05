@@ -57,7 +57,6 @@ def crossover(genome1, genome2):
     new_genome2[:i] = genome1[:i].copy()
     return new_genome1,new_genome2
 
-
 def run_generation(
         population, environment,
         p_mutation=0.01,
@@ -115,7 +114,7 @@ max_steps - the maximum number of simulation steps for each run
             for j,(s,g) in enumerate(sorted(scored_genomes, key=lambda x:-x[0])):
                 if j >= savenum:
                     break
-                print(s,list(g),sep=',',file=f)
+                print('{s},{g}'.format(s=s, g=list(g)), file=f)
     # Perform the scaling: this shifts all numbers to be strictly positive
     scored_genomes = [( (score - flo) + 0.1 * abs(flo) , genome ) for score,genome in scored_genomes]
     total_score = sum(s for s,_ in scored_genomes)
@@ -157,6 +156,7 @@ def evolve(
         max_steps=1000,
         render_gens=10,
         savefile=None,
+        dumpfile=None,
         savenum=1,
         allow_parallel=True,
         max_jobs=None
@@ -169,26 +169,37 @@ simulation_reps - the number of times to execute each actor in the environment, 
 max_steps - the maximum number of simulation steps for each run
 """
     population = initial_population
-    for i in range(generations):
-        population,best_actor,worst_actor = run_generation(
-                population, environment,
-                p_mutation=p_mutation,
-                mutation_scale=mutation_scale,
-                simulation_reps=simulation_reps,
-                max_steps=max_steps,
-                savefile=savefile,
-                savenum=savenum,
-                allow_parallel=allow_parallel,
-                max_jobs=max_jobs
-            )
+    try:
+        for i in range(generations):
+            population,best_actor,worst_actor = run_generation(
+                    population, environment,
+                    p_mutation=p_mutation,
+                    mutation_scale=mutation_scale,
+                    simulation_reps=simulation_reps,
+                    max_steps=max_steps,
+                    savefile=savefile,
+                    savenum=savenum,
+                    allow_parallel=allow_parallel,
+                    max_jobs=max_jobs
+                )
 
-        if render_gens != None and (i % render_gens) == 0:
-            print('---=== Generation', i, '===---')
-            simulate(best_actor, environment, render=True, max_steps=max_steps)
-
-
+            if render_gens != None and (i % render_gens) == 0:
+                print('---=== Generation', i, '===---')
+                simulate(best_actor, environment, render=True, max_steps=max_steps)
+    except:
+        if dumpfile != None:
+            dump_genomes(dumpfile, population)
     return population
 
+def dump_genomes(dumpfile, population):
+    genomes = [a.get_genome() for a in population]
+    with open(dumpfile, 'wb') as f:
+        np.save(f, genomes)
+
+def undump_genomes(dumpfile, model_actor):
+    with open(dumpfile, 'rb') as f:
+        genomes = np.load(f)
+    return [model_actor.from_genome(g) for g in genomes]
 
 def load_genomes(savefile, criterion='best', num=1):
     """Loads genomes (and their scores) from a savefile. Returns a list of genomes.
