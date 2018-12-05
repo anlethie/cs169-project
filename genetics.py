@@ -178,7 +178,10 @@ def evolve(
         savefile=None,
         savenum=1,
         allow_parallel=True,
-        max_jobs=None, fps=30
+        max_jobs=None,
+        fps=30,
+        change=500,
+        render_type=None
         ):
     """Runs selection and simulation on initial_population for specified number of generations.
 Returns the final generation.
@@ -187,22 +190,11 @@ p_mutation - the chance that a particular value in an offspring genome is change
 simulation_reps - the number of times to execute each actor in the environment, to account for random variation in initial environmental conditions
 max_steps - the maximum number of simulation steps for each run
 """
-    population = initial_population
+    best=0
+    population = initial_population    
     for i in range(generations):
-<<<<<<< HEAD
-        print('---=== Generation', i, '===---')
-        if type(render_gens)==int and (i % render_gens) == 0:
-            print(simulate(population[0], environment, render=True, max_steps=max_steps, fps=fps))
-        if render_gens=='BW_render':
-            population_best_worst(population, environment, simulation_reps, i, fps=fps)
-        if render_gens=='BW':
-            population_best_worst(population, environment, simulation_reps, i, render=False)
-        if render_gens=='change':
-            population_change(population, environment, i)
-        population = run_generation(
-=======
+        print('Generation ', i)
         population,best_actor,worst_actor = run_generation(
->>>>>>> 2ff9d269724ee00f0c737b4bc16d419eaf5b14da
                 population, environment,
                 p_mutation=p_mutation,
                 mutation_scale=mutation_scale,
@@ -214,10 +206,28 @@ max_steps - the maximum number of simulation steps for each run
                 max_jobs=max_jobs
             )
 
-        if render_gens != None and (i % render_gens) == 0:
+        if type(render_gens)==int and (i % render_gens) == 0:
             print('---=== Generation', i, '===---')
-            simulate(best_actor, environment, render=True, max_steps=max_steps)
-
+            print(simulate(best_actor, environment, render=True, max_steps=max_steps, fps=fps))
+            if render_type.upper()=='BW_RENDER':
+                print('Best Actor')
+                print(simulate(best_actor, environment, render=True, max_steps=max_steps, fps=fps))
+                print('Worst Actor')
+                print(simulate(best_actor, environment, render=True, max_steps=max_steps, fps=fps))
+            if render_type.upper()=='BW':
+                print('Best Actor')
+                print(simulate(best_actor, environment, simulation_reps, i, render=False, fps=fps))
+                print('Worst Actor')
+                print(simulate(worst_actor, environment, simulation_reps, i, render=False, fps=fps))
+        if render_type.upper()=='CHANGE':
+            if i==0:
+                best=simulate(best_actor, environment, render=False, max_steps=max_steps, fps=fps)
+            else:
+                if simulate(best_actor, environment, render=False, max_steps=max_steps, fps=fps)>best+change:
+                    print('Change of score from ', best, 'to',
+                          simulate(best_actor, environment, render=False, max_steps=max_steps, fps=fps))
+                    best=simulate(best_actor, environment, render=True, max_steps=max_steps, fps=fps)
+                    
 
     return population
 
