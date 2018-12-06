@@ -6,7 +6,7 @@ if __name__ == '__main__':
     env = gym.make('CartPole-v0')
     test_actor_class(GPA, env,
         savefile='CartPole.txt',
-        actor_args={
+        actor_args={'hidden_layers':[5]
             },
         evolve_args={
                 'generations': 1000,
