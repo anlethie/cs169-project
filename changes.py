@@ -26,3 +26,7 @@ population = [GeneticPerceptronActor(env.observation_space, env.action_space) fo
 print('Evolving...', flush=True)
 evolve(population, env, generations=50, simulation_reps=1, max_steps=5000, render_gens='BW', allow_parallel=False,fps=100, p_mutation=.01)
 =======
+
+                    
+
+'''
