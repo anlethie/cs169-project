@@ -10,14 +10,14 @@ ALLOW_PARALLEL = True
 try:
     assert ALLOW_PARALLEL,'Parallel computation manually disabled.'
     import gym
-    from actor import GeneticPerceptronActor
+    from actor import GeneticNNActor
     from joblib import Parallel, delayed
     # Actually execute a simple test of the parallel system, to make sure it works
     N_JOBS = 8
     # PARALLEL_TEST = Parallel(n_jobs=N_JOBS)(delayed(lambda x: x**0.5)(i) for i in range(100))
     env = gym.make('CartPole-v1')
     PARALLEL_TEST = Parallel(n_jobs=N_JOBS)(delayed(lambda a: simulate(a, env))(a)
-        for a in [GeneticPerceptronActor(env.observation_space, env.action_space) for _ in range(100)])
+        for a in [GeneticNNActor(env.observation_space, env.action_space) for _ in range(100)])
     USE_PARALLEL  = True
     print('Parallel computation enabled.')
 except Exception as e:

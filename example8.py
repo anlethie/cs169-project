@@ -7,19 +7,18 @@ from actor import GeneticPerceptronActor as GPA
 # evolve_args = {}, render_args = {}):
 
 if __name__ == '__main__':
-    env = gym.make('MsPacman-v0')
+    env = gym.make('MsPacman-ram-v0')
     test_actor_class(GPA, env,
-        savefile='MsPacman_PA.txt',
+        savefile='CartPole.txt',
         actor_args={
             },
         evolve_args={
                 'generations': 1000,
                 'simulation_reps':5,
-                'max_steps':10000,
+                'max_steps':1000,
                 'p_mutation': 0.03,
                 'render_gens': 5,
                 'savenum': 3,
-                'render_type':'BW'
             },
         render_args={
                 'fps': 30,

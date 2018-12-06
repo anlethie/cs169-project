@@ -107,3 +107,7 @@ class GeneticNNActor(NeuralNetActor, GeneticActor):
             nna._layers.append(new_layer)
             start += layer_size
         return nna
+
+
+            
+            
