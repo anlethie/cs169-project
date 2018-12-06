@@ -206,29 +206,24 @@ max_steps - the maximum number of simulation steps for each run
                     allow_parallel=allow_parallel,
                     max_jobs=max_jobs
                 )
-            print(best_actor, worst_actor)
-            if type(render_gens)==int and (i % render_gens) == 0:
-                if render_type.upper()=='BW_RENDER':
-                    print('Best Actor')
-                    print(simulate(best_actor, environment, render=True, max_steps=max_steps, fps=fps))
-                    print('Worst Actor')
-                    print(simulate(best_actor, environment, render=True, max_steps=max_steps, fps=fps))
-                if render_type.upper()=='BW':
-                    print('Best Actor')
-                    print(simulate(best_actor, environment, simulation_reps, i, render=False, fps=fps))
-                    print('Worst Actor')
-                    print(simulate(worst_actor, environment, simulation_reps, i, render=False, fps=fps))
-                else:
-                    print(simulate(best_actor, environment, render=True, max_steps=max_steps, fps=fps))
-
-            if render_type.upper()=='CHANGE':
+            print('Generation ', i)
+            if i%render_gens==0:
+                print(simulate(best_actor, environment, max_steps=1000, render=False, fps=fps))
+            '''
+            if render_type.lower()=='change':
                 if i==0:
-                    best=simulate(best_actor, environment, render=False, max_steps=max_steps, fps=fps)
+                    best=simulate(best_actor, environment, max_steps=1000, render=True, fps=fps)
+                if simulate(best_actor, environment, max_steps=1000, render=False, fps=fps)-best>change:
+                    print(simulate(best_actor, environment, max_steps=1000, render=True, fps=fps))
+                    best=simulate(best_actor, environment, max_steps=1000, render=False, fps=fps)
+            elif i%render_gens==0:
+                if render_type.upper()=='BW':
+                    print(simulate(best_actor, environment, max_steps=1000, render=False, fps=fps))
+                    print(simulate(worst_actor, environment, max_steps=1000, render=False, fps=fps))
                 else:
-                    if simulate(best_actor, environment, render=False, max_steps=max_steps, fps=fps)>best+change:
-                        print('Change of score from ', best, 'to',
-                              simulate(best_actor, environment, render=False, max_steps=max_steps, fps=fps))
-                        best=simulate(best_actor, environment, render=True, max_steps=max_steps, fps=fps)
+                    print(simulate(best_actor, environment, max_steps=1000, render=False, fps=fps))
+                    '''
+                
     except:
         if dumpfile != None:
             dump_genomes(dumpfile, population)
