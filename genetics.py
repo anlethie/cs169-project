@@ -185,7 +185,7 @@ max_steps - the maximum number of simulation steps for each run
 
             if render_gens != None and (i % render_gens) == 0:
                 print('---=== Generation', i, '===---')
-                simulate(best_actor, environment, render=True, max_steps=max_steps)
+                simulate(best_actor, environment, video_postfix=i, render=True, max_steps=max_steps)
     except:
         if dumpfile != None:
             dump_genomes(dumpfile, population)
