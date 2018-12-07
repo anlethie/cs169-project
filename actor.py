@@ -170,11 +170,14 @@ class ModifiedNeuralNetActor(Actor):
         # Foward feed through all hidden layers
         for layer in self._layers[:-1]:
             current_vector = layer.dot(current_vector)
-            current_vector = np.tanh(current_vector)
+            #current_vector = np.tanh(current_vector) # Tanh activation
+            current_vector = current_vector * (current_vector > 0) # Relu activation
         
-        # The output depends on the control range of the model's actuators
-        # We might have to change it accordingly to the model's xml configuration
+        # unbounded output vector [-inf, inf]
         current_vector = self._layers[-1].dot(current_vector)
+
+        # normalize to [-1,1]
+        #current_vector = np.tanh(current_vector)
 
         return current_vector
 
