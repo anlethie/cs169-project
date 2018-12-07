@@ -57,10 +57,40 @@ def crossover(genome1, genome2):
     new_genome2[:i] = genome1[:i].copy()
     return new_genome1,new_genome2
 
+def roulette_selection(scored_genomes):
+    flo = min(s for s,_ in scored_genomes)
+    fhi = max(s for s,_ in scored_genomes)
+
+    """Returns a mating pool from the scored_genomes according to a roulette-sampling style selection algorithm."""
+    # Perform the scaling: this shifts all numbers to be strictly positive
+    scored_genomes = [( (score - flo) + 0.1 * abs(flo) , genome ) for score,genome in scored_genomes]
+    total_score = sum(s for s,_ in scored_genomes)
+    # Re-write the scores as cumulative scores:
+    cscored_genomes = [scored_genomes[0]]
+    for score,genome in scored_genomes[1:]:
+        cscored_genomes.append((cscored_genomes[-1][0] + score, genome))
+
+    def sample():
+        r = np.random.rand() * total_score
+        # Find the first cumulative score that exceeds the random number
+        return next(genome for cscore,genome in cscored_genomes if cscore >= r)
+
+    N = len(scored_genomes)
+    # perform roulette-wheel sampling:
+    return [sample() for _ in range(N)]
+
+def top_selection(scored_genomes, cutoff=0.5):
+    """Returns genomes.in the top 'cutoff' fraction of scores."""
+    N = len(scored_genomes)
+    cutoff_index = int(np.floor(N * cutoff))
+    survivors    = [g for _,g in sorted(scored_genomes, key=lambda sg:-sg[0])[:cutoff_index]]
+    return survivors
+
 def run_generation(
         population, environment,
         p_mutation=0.01,
         mutation_scale=0.25,
+        selection=roulette_selection,
         simulation_reps=100,
         max_steps=1000,
         savefile=None,
@@ -101,7 +131,7 @@ max_steps - the maximum number of simulation steps for each run
     # flo,worst_genome = min(scored_genomes)
     # fhi,best_genome  = max(scored_genomes)
     flo,worst_genome = scored_genomes[0]
-    fhi,best_genome = scored_genomes[0]
+    fhi,best_genome  = scored_genomes[0]
     for s,g in scored_genomes[1:]:
         if s < flo:
             flo = s
@@ -115,22 +145,8 @@ max_steps - the maximum number of simulation steps for each run
                 if j >= savenum:
                     break
                 print('{s},{g}'.format(s=s, g=list(g)), file=f)
-    # Perform the scaling: this shifts all numbers to be strictly positive
-    scored_genomes = [( (score - flo) + 0.1 * abs(flo) , genome ) for score,genome in scored_genomes]
-    total_score = sum(s for s,_ in scored_genomes)
-    # Re-write the scores as cumulative scores:
-    cscored_genomes = [scored_genomes[0]]
-    for score,genome in scored_genomes[1:]:
-        cscored_genomes.append((cscored_genomes[-1][0] + score, genome))
-
-    def roulette_sample():
-        r = np.random.rand() * total_score
-        # Find the first cumulative score that exceeds the random number
-        return next(genome for cscore,genome in cscored_genomes if cscore >= r)
-
-    N = len(population)
-    # perform roulette-wheel sampling:
-    mating_pool = [roulette_sample() for _ in range(N)]
+    
+    mating_pool = selection(scored_genomes)
 
     def gen_children():
         parents = rnd.sample(mating_pool, 2)
@@ -138,7 +154,7 @@ max_steps - the maximum number of simulation steps for each run
 
     # Perform cross-over N//2 times, since each produces 2 offspring
     # Simultaneously execute mutations on each child
-    offspring_genomes = [mutate(x, p=p_mutation, scale=mutation_scale) for _ in range(N // 2) for x in gen_children()]
+    offspring_genomes = [mutate(x, p=p_mutation, scale=mutation_scale) for _ in range(len(scored_genomes) // 2) for x in gen_children()]
 
     # need some actor from the original pool, just to generate the new actors
     actor = population[0]
@@ -152,6 +168,7 @@ def evolve(
         generations=100,
         p_mutation=0.01,
         mutation_scale=0.25,
+        selection=roulette_selection,
         simulation_reps=100,
         max_steps=1000,
         render_gens=10,
@@ -175,6 +192,7 @@ max_steps - the maximum number of simulation steps for each run
                     population, environment,
                     p_mutation=p_mutation,
                     mutation_scale=mutation_scale,
+                    selection=selection,
                     simulation_reps=simulation_reps,
                     max_steps=max_steps,
                     savefile=savefile,
@@ -186,7 +204,8 @@ max_steps - the maximum number of simulation steps for each run
             if render_gens != None and (i % render_gens) == 0:
                 print('---=== Generation', i, '===---')
                 simulate(best_actor, environment, render=True, max_steps=max_steps)
-    except:
+    except Exception as e:
+        raise e
         if dumpfile != None:
             dump_genomes(dumpfile, population)
     return population
