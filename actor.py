@@ -156,10 +156,12 @@ class ModifiedNeuralNetActor(Actor):
         """hidden_layers is a list of numbers, each number the number of nodes on a hidden layer, in order"""
         super(ModifiedNeuralNetActor, self).__init__(observation_space, action_space)
         self._layers = []
+        self._layers_bias = []
         self._n_act = action_space.low.shape[0]
         self._n_obs = product(observation_space.shape)
         for in_size,out_size in zip([self._n_obs] + hidden_layers, hidden_layers + [self._n_act]):
             self._layers.append((np.random.uniform(low=-1, high=1, size=(out_size, in_size))))
+            self._layers_bias.append((np.random.uniform(low=-1, high=1, size=(out_size))))
         # self._threshold_fn = lambda X: 1. / (1. + np.exp(-X))
 
     def react_to(self, observation):
@@ -167,14 +169,14 @@ class ModifiedNeuralNetActor(Actor):
         # obs = normalize_observation(observation, self._observation_space)
         current_vector = np.reshape(observation, self._n_obs)
 
-        # Foward feed through all hidden layers
-        for layer in self._layers[:-1]:
-            current_vector = layer.dot(current_vector)
+        # Foward feed through all hidden layers, except output layer
+        for i in range(len(self._layers)-1):
+            current_vector = self._layers[i].dot(current_vector) + self._layers_bias[i]
             #current_vector = np.tanh(current_vector) # Tanh activation
             current_vector = current_vector * (current_vector > 0) # Relu activation
         
         # unbounded output vector [-inf, inf]
-        current_vector = self._layers[-1].dot(current_vector)
+        current_vector = self._layers[-1].dot(current_vector) + self._layers_bias[-1]
 
         # normalize to [-1,1]
         #current_vector = np.tanh(current_vector)
@@ -188,6 +190,11 @@ class ModifiedGeneticNNActor(ModifiedNeuralNetActor, GeneticActor):
         genome = np.array([])
         for layer in self._layers:
             genome = np.concatenate((genome, np.reshape(layer.copy(), product(layer.shape))))
+        for layer_bias in self._layers_bias:
+            genome_bias = np.concatenate((genome, np.reshape(layer_bias.copy(), product(layer_bias.shape))))
+
+        genome = np.concatenate((genome, genome_bias))
+        
         genome = (genome + 1.)/2.
         return genome
 
@@ -195,10 +202,16 @@ class ModifiedGeneticNNActor(ModifiedNeuralNetActor, GeneticActor):
         genome = (genome.copy() * 2.) - 1.
         nna = ModifiedGeneticNNActor(self._observation_space, self._action_space)
         nna._layers = []
+        nna._layers_bias = []
         start = 0
         for layer in self._layers:
             layer_size = product(layer.shape)
             new_layer = np.reshape(genome[start:start+layer_size].copy(), layer.shape)
             nna._layers.append(new_layer)
+            start += layer_size
+        for layer in self._layers_bias:
+            layer_size = product(layer.shape)
+            new_layer = np.reshape(genome[start:start+layer_size].copy(), layer.shape)
+            nna._layers_bias.append(new_layer)
             start += layer_size
         return nna
