@@ -1,7 +1,7 @@
 import time
 from gym import wrappers
 
-def simulate(actor, environment, max_steps=1000, video_postfix=0, render=False, fps=30):
+def simulate(actor, environment, max_steps=1000, video_postfix='Best', render=False, fps=30):
     """Executes a full episode of actor in environment, for at most max_steps time steps
 If render is True, will render simulation on screen at ~fps frames per second."""
     if render:

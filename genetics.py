@@ -91,6 +91,7 @@ def run_generation(
         p_mutation=0.01,
         mutation_scale=0.25,
         selection=roulette_selection,
+        keep_parents_alive=False,
         simulation_reps=100,
         max_steps=1000,
         savefile=None,
@@ -152,14 +153,31 @@ max_steps - the maximum number of simulation steps for each run
         parents = rnd.sample(mating_pool, 2)
         return crossover(*parents)
 
+    parents_genomes = []
+    offspring_genomes = []
+    num_children = len(scored_genomes)
+
+    if keep_parents_alive:
+        parents_genomes = mating_pool
+        num_children = len(scored_genomes) - len(parents_genomes)
+    
     # Perform cross-over N//2 times, since each produces 2 offspring
     # Simultaneously execute mutations on each child
-    offspring_genomes = [mutate(x, p=p_mutation, scale=mutation_scale) for _ in range(len(scored_genomes) // 2) for x in gen_children()]
+    offspring_genomes = [mutate(x, p=p_mutation, scale=mutation_scale) for _ in range(num_children // 2) for x in gen_children()]
+    
+    # merge both
+    next_generation = parents_genomes + offspring_genomes
+
+    # For debugging
+    # print("Parents: " + str(len(parents_genomes)))
+    # print("Offsprings: " + str(len(offspring_genomes)))
+    # print("Next generation: " + str(len(next_generation)))
+    
 
     # need some actor from the original pool, just to generate the new actors
     actor = population[0]
 
-    return [actor.from_genome(genome) for genome in offspring_genomes],actor.from_genome(best_genome),actor.from_genome(worst_genome)
+    return [actor.from_genome(genome) for genome in next_generation],actor.from_genome(best_genome),actor.from_genome(worst_genome)
 
 
 def evolve(
@@ -169,6 +187,7 @@ def evolve(
         p_mutation=0.01,
         mutation_scale=0.25,
         selection=roulette_selection,
+        keep_parents_alive=False,
         simulation_reps=100,
         max_steps=1000,
         render_gens=10,
@@ -194,6 +213,7 @@ max_steps - the maximum number of simulation steps for each run
                     mutation_scale=mutation_scale,
                     selection=selection,
                     simulation_reps=simulation_reps,
+                    keep_parents_alive=keep_parents_alive,
                     max_steps=max_steps,
                     savefile=savefile,
                     savenum=savenum,
@@ -204,7 +224,8 @@ max_steps - the maximum number of simulation steps for each run
             if render_gens != None and (i % render_gens) == 0:
                 print('---=== Generation', i, '===---')
                 simulate(best_actor, environment, video_postfix=i, render=True, max_steps=max_steps)
-    except:
+    except Exception as e:
+        print(e) # For debugging
         if dumpfile != None:
             dump_genomes(dumpfile, population)
     return population
