@@ -149,7 +149,6 @@ class GeneticNNActor(NeuralNetActor, GeneticActor):
         return nna
 
 
-
 class ModifiedNeuralNetActor(Actor):
     """Actor that uses a neural network to react to observations."""
     def __init__(self, observation_space, action_space, hidden_layers=[]):
@@ -159,9 +158,16 @@ class ModifiedNeuralNetActor(Actor):
         self._layers_bias = []
         self._n_act = action_space.low.shape[0]
         self._n_obs = product(observation_space.shape)
+
+        # 1 neuron has multiple weights
         for in_size,out_size in zip([self._n_obs] + hidden_layers, hidden_layers + [self._n_act]):
             self._layers.append((np.random.uniform(low=-1, high=1, size=(out_size, in_size))))
-            self._layers_bias.append((np.random.uniform(low=-1, high=1, size=(out_size))))
+
+        # 1 neuron has 1 bias
+        for num_neuron in hidden_layers:    
+            self._layers_bias.append((np.random.uniform(low=-1, high=1, size=(num_neuron))))
+        # Also add bias for the output layer
+        self._layers_bias.append((np.random.uniform(low=-1, high=1, size=(self._n_act))))
         # self._threshold_fn = lambda X: 1. / (1. + np.exp(-X))
 
     def react_to(self, observation):
@@ -183,7 +189,6 @@ class ModifiedNeuralNetActor(Actor):
 
         return current_vector
 
-    
 
 class ModifiedGeneticNNActor(ModifiedNeuralNetActor, GeneticActor):
     def get_genome(self):
@@ -191,12 +196,20 @@ class ModifiedGeneticNNActor(ModifiedNeuralNetActor, GeneticActor):
         genome_bias = np.array([])
         for layer in self._layers:
             genome = np.concatenate((genome, np.reshape(layer.copy(), product(layer.shape))))
+        # print("Genome's shape: " + str(np.asarray(self._layers).shape))
+        # print(self._layers[1].shape)
         for layer_bias in self._layers_bias:
             genome_bias = np.concatenate((genome_bias, np.reshape(layer_bias.copy(), product(layer_bias.shape))))
+        # print("Bias's shape: " + str(np.asarray(self._layers_bias).shape))
+        # print(self._layers_bias[1].shape)
 
         genome = np.concatenate((genome, genome_bias))
+        # print("Total genome's shape: " + str(genome.shape) )
         
         genome = (genome + 1.)/2.
+
+        # print("===============================================")
+
         return genome
 
     def from_genome(self, genome):
