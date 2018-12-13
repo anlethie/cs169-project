@@ -188,10 +188,11 @@ class ModifiedNeuralNetActor(Actor):
 class ModifiedGeneticNNActor(ModifiedNeuralNetActor, GeneticActor):
     def get_genome(self):
         genome = np.array([])
+        genome_bias = np.array([])
         for layer in self._layers:
             genome = np.concatenate((genome, np.reshape(layer.copy(), product(layer.shape))))
         for layer_bias in self._layers_bias:
-            genome_bias = np.concatenate((genome, np.reshape(layer_bias.copy(), product(layer_bias.shape))))
+            genome_bias = np.concatenate((genome_bias, np.reshape(layer_bias.copy(), product(layer_bias.shape))))
 
         genome = np.concatenate((genome, genome_bias))
         
