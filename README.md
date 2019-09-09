@@ -11,3 +11,9 @@ Next, optionally install joblib using `pip install joblib==0.12`. **Do not insta
 ## Execution
 
 Once installed, run the Half-Cheetah environment by executing `example_mujo_nn.py`.
+
+## Team
+1. Luke Keating: Selection of environment, brainstorming actor design
+2. David Legg: Initial coding of actors, genetics, and testing harness.
+3. An Le: Improvements to actors, selection routines; execution of tests.
+4. Son Le: Improvements to actors; graphics, video and presentation design.
